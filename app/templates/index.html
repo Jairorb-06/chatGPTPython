@@ -4,92 +4,272 @@
 
 {%block content%}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Función para crear nueva conversación
-    document.getElementById('new-chat-btn').addEventListener('click', async function() {
-        const response = await fetch('/new_conversation', {
-            method: 'POST'
-        });
-        
-        if (response.ok) {
-            location.reload();
-        }
-    });
+    document.addEventListener('DOMContentLoaded', function () {
+        // Definir todas las funciones al inicio
+        const modal = document.getElementById('newConversationModal');
+        const conversationNameInput = document.getElementById('conversationName');
+        const createBtn = document.getElementById('createConversationBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
 
-    // Función para cambiar conversación (usando delegación de eventos)
-    document.addEventListener('click', async function(e) {
-        if (e.target.classList.contains('conversation-btn')) {
-            const convId = e.target.dataset.convId;
-            const response = await fetch('/switch_conversation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ conversation_id: convId })
-            });
-            
-            if (response.ok) {
-                location.reload();
+        function showModal() {
+            modal.style.display = 'block';
+            conversationNameInput.value = '';
+            conversationNameInput.classList.remove('invalid');
+            setTimeout(() => conversationNameInput.focus(), 100);
+        }
+
+        function hideModal() {
+            modal.style.display = 'none';
+        }
+
+        // Toggle para configuración avanzada
+        document.getElementById('toggle-config').addEventListener('click', function () {
+            const configPanel = document.getElementById('config-panel');
+            const icon = this.querySelector('i');
+
+            if (configPanel.style.display === 'none' || configPanel.style.display === '') {
+                configPanel.style.display = 'block';
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                configPanel.style.display = 'none';
+                icon.style.transform = 'rotate(0deg)';
             }
-        }
-    });
+        });
 
-    // Función para eliminar conversación
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async function(e) {
-            e.stopPropagation();
-            const convId = this.dataset.convId;
-            
-            if (confirm('¿Estás seguro de que quieres eliminar esta conversación?')) {
-                const response = await fetch('/delete_conversation', {
+        // Función para crear nueva conversación
+        document.getElementById('new-chat-btn').addEventListener('click', async function () {
+            showModal();
+        });
+
+        // Función para cambiar conversación (usando delegación de eventos)
+        document.addEventListener('click', async function (e) {
+            if (e.target.classList.contains('conversation-btn')) {
+                const convId = e.target.dataset.convId;
+                const response = await fetch('/switch_conversation', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ conversation_id: convId })
                 });
-                
+
                 if (response.ok) {
                     location.reload();
                 }
             }
         });
-    });
 
-    // Envío del formulario con spinner
-    document.querySelector('#chat-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
+        // Función para eliminar conversación
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function (e) {
+                e.stopPropagation();
+                const convId = this.dataset.convId;
 
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        
-        // Mostrar spinner
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>';
-        submitBtn.disabled = true;
+                if (confirm('¿Estás seguro de que quieres eliminar esta conversación?')) {
+                    const response = await fetch('/delete_conversation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ conversation_id: convId })
+                    });
 
-        try {
-            const formData = new FormData(this);
-            const response = await fetch('/', {
-                method: 'POST',
-                body: formData
+                    if (response.ok) {
+                        location.reload();
+                    }
+                }
+            });
+        });
+
+        // Envío del formulario con spinner
+        document.querySelector('#chat-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            // Mostrar spinner
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>';
+            submitBtn.disabled = true;
+
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const html = await response.text();
+                document.body.innerHTML = html;
+            } catch (error) {
+                // Restaurar botón en caso de error
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+            }
+        });
+
+        // Auto-scroll al final del chat
+        const chatContainer = document.getElementById('chat-messages');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Event listeners para el modal
+        // Cerrar modal
+        if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
+        if (closeBtn) closeBtn.addEventListener('click', hideModal);
+
+        // Cerrar al hacer click en el overlay
+        if (modal) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal || e.target.classList.contains('modal-overlay')) {
+                    hideModal();
+                }
+            });
+        }
+
+        // Crear conversación cuando se presione el botón
+        if (createBtn) {
+            createBtn.addEventListener('click', async function () {
+                const name = conversationNameInput.value.trim();
+
+                if (name === '') {
+                    conversationNameInput.classList.add('invalid');
+                    return;
+                }
+
+                conversationNameInput.classList.remove('invalid');
+
+                const response = await fetch('/new_conversation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: name })
+                });
+
+                if (response.ok) {
+                    hideModal();
+                    location.reload();
+                }
+            });
+        }
+
+        // Crear conversación al presionar Enter
+        if (conversationNameInput) {
+            conversationNameInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    createBtn.click();
+                }
             });
 
-            const html = await response.text();
-            document.body.innerHTML = html;
-        } catch (error) {
-            // Restaurar botón en caso de error
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-            console.error('Error:', error);
+            // Limpiar validación cuando escriba
+            conversationNameInput.addEventListener('input', function () {
+                this.classList.remove('invalid');
+            });
         }
-    });
-});
+
+        // Variables para el micrófono
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        // Función para inicializar el micrófono
+        async function initMicrophone() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioChunks = [];
+                    await sendAudioToServer(audioBlob);
+                };
+                
+                return true;
+            } catch (error) {
+                console.error('Error accediendo al micrófono:', error);
+                alert('No se pudo acceder al micrófono. Por favor verifica los permisos.');
+                return false;
+            }
+        }
+
+        // Función para enviar audio al servidor
+        async function sendAudioToServer(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.wav');
+            
+            try {
+                const submitBtn = document.querySelector('#chat-form button[type="submit"]');
+                const micBtn = document.getElementById('micBtn');
+                const originalText = submitBtn.innerHTML;
+                
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>';
+                submitBtn.disabled = true;
+                micBtn.disabled = true;
+                
+                const response = await fetch('/audio', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    document.body.innerHTML = html;
+                } else {
+                    alert('Error procesando el audio');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    micBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error enviando audio:', error);
+                alert('Error enviando el audio');
+            }
+        }
+
+        // Event listener para el botón del micrófono
+        const micBtn = document.getElementById('micBtn');
+        const micIcon = document.getElementById('micIcon');
+        
+        if (micBtn) {
+            micBtn.addEventListener('click', async function() {
+                if (!isRecording) {
+                    if (!mediaRecorder) {
+                        const initialized = await initMicrophone();
+                        if (!initialized) return;
+                    }
+                    
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micIcon.innerHTML = '🔴';
+                    micBtn.classList.remove('btn-outline-secondary');
+                    micBtn.classList.add('btn-danger');
+                    this.title = 'Presiona para detener la grabación';
+                } else {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    micIcon.innerHTML = '🎤';
+                    micBtn.classList.remove('btn-danger');
+                    micBtn.classList.add('btn-outline-secondary');
+                    this.title = 'Presiona para grabar';
+                }
+            });
+        }
+
+     });
 </script>
 
-<div class="container-fluid">
-    <div class="row">
+<div class="container-fluid h-100">
+    <div class="row h-100">
         <!-- Sidebar de conversaciones -->
-        <div class="col-md-3">
+        <div class="col-md-3 h-100">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="m-0">Conversaciones</h5>
@@ -98,12 +278,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
                         {% for conv_id, conv in conversations.items() %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center {% if conv_id == current_id %}active{% endif %}">
-                            <div class="conversation-btn flex-grow-1" data-conv-id="{{ conv_id }}" style="cursor: pointer; padding: 8px 0;">
+                        <div
+                            class="list-group-item d-flex justify-content-between align-items-center {% if conv_id == current_id %}active{% endif %}">
+                            <div class="conversation-btn flex-grow-1" data-conv-id="{{ conv_id }}"
+                                style="cursor: pointer; padding: 8px 0;">
                                 {{ conv.name }}
                             </div>
                             {% if conversations|length > 1 %}
-                            <button class="btn btn-danger btn-sm delete-btn ms-2" data-conv-id="{{ conv_id }}" style="font-size: 12px; padding: 2px 6px;">×</button>
+                            <button class="btn btn-danger btn-sm delete-btn ms-2" data-conv-id="{{ conv_id }}"
+                                style="font-size: 12px; padding: 2px 6px;">×</button>
                             {% endif %}
                         </div>
                         {% endfor %}
@@ -113,90 +296,327 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
 
         <!-- Área principal del chat -->
-        <div class="col-md-9">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h2 class="text-center m-0">OpenAI Chat API</h2>
-                </div>
-                <div class="card-body">
-                    {% if error %}
-                    <div class="alert alert-danger">{{ error }}</div>
-                    {% endif %}
+        <div class="col-md-9 h-100 d-flex flex-column">
+            <!-- Header del chat -->
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="m-0">OpenAI Chat API</h2>
+                <button id="toggle-config" class="btn btn-outline-secondary btn-sm">
+                    <i style="transition: transform 0.3s;">⚙️</i> Configuración
+                </button>
+            </div>
 
-                    <form id="chat-form" action="/" method="post" enctype="multipart/form-data">
-                        <!-- Controles de parámetros -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="temperature" class="form-label">Temperature (0-1):</label>
-                                <input type="number" class="form-control" name="temperature" id="temperature" 
-                                       value="0.5" min="0" max="1" step="0.1">
-                                <small class="text-muted">Creatividad: 0=preciso, 1=creativo</small>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="max_tokens" class="form-label">Max Tokens:</label>
-                                <input type="number" class="form-control" name="max_tokens" id="max_tokens" 
-                                       value="3000" min="10" max="5000" step="10">
-                                <small class="text-muted">Longitud de respuesta</small>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="top_p" class="form-label">Top P (0-1):</label>
-                                <input type="number" class="form-control" name="top_p" id="top_p" 
-                                       value="1" min="0" max="1" step="0.1">
-                                <small class="text-muted">Enfoque</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="frequency_penalty" class="form-label">Frequency Penalty (0-2):</label>
-                                <input type="number" class="form-control" name="frequency_penalty" id="frequency_penalty" 
-                                       value="0.2" min="0" max="2" step="0.1">
-                                <small class="text-muted">Evita repetir palabras</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="presence_penalty" class="form-label">Presence Penalty (0-2):</label>
-                                <input type="number" class="form-control" name="presence_penalty" id="presence_penalty" 
-                                       value="0.8" min="0" max="2" step="0.1">
-                                <small class="text-muted">Explora nuevos temas</small>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="file" class="form-label">Adjuntar archivo (PDF, Word o imagen):</label>
-                            <input type="file" class="form-control" name="file" id="file">
-                        </div>
-
-                        <div class="d-flex mb-3">
-                            <input type="text" class="form-control me-2" name="question" placeholder="Escribe tu pregunta...">
-                            <button class="btn btn-primary" type="submit">Enviar</button>
-                        </div>
-                    </form>
-
-                    <!-- Área del chat -->
-                    <div id="chat" class="card overflow-auto" style="height: 400px;">
-                        <div class="card-body">
-                            {% if chat %}
-                              {% for c in chat %}
-                                {% if c.role == "user" %}
-                                  <div class="mb-3">
-                                    <p class="text-primary m-0"><strong>Tú:</strong></p>
-                                    <div class="ps-2 border-start border-primary">{{ c.content | safe }}</div>
-                                  </div>
-                                {% else %}
-                                  <div class="mb-3">
-                                    <p class="text-success m-0"><strong>GPT:</strong></p>
-                                    <div class="ps-2 border-start border-success">{{ c.content | safe }}</div>
-                                  </div>
-                                {% endif %}
-                              {% endfor %}
-                            {% else %}
-                              <p class="text-muted">Aún no hay mensajes en esta conversación.</p>
-                            {% endif %}
-                        </div>
+            <!-- Panel de configuración colapsable -->
+            <div id="config-panel" class="border-bottom p-3" style="display: none; background-color: #f8f9fa;">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="temperature" class="form-label">Temperature (0-1):</label>
+                        <input type="number" class="form-control form-control-sm" name="temperature" id="temperature"
+                            value="0.5" min="0" max="1" step="0.1" form="chat-form">
+                        <small class="text-muted">Creatividad: 0=preciso, 1=creativo</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="max_tokens" class="form-label">Max Tokens:</label>
+                        <input type="number" class="form-control form-control-sm" name="max_tokens" id="max_tokens"
+                            value="1500" min="10" max="5000" step="10" form="chat-form">
+                        <small class="text-muted">Longitud de respuesta</small>
                     </div>
                 </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="top_p" class="form-label">Top P (0-1):</label>
+                        <input type="number" class="form-control form-control-sm" name="top_p" id="top_p" value="1"
+                            min="0" max="1" step="0.1" form="chat-form">
+                        <small class="text-muted">Enfoque</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="frequency_penalty" class="form-label">Frequency Penalty (0-2):</label>
+                        <input type="number" class="form-control form-control-sm" name="frequency_penalty"
+                            id="frequency_penalty" value="0.2" min="0" max="2" step="0.1" form="chat-form">
+                        <small class="text-muted">Evita repetir palabras</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="presence_penalty" class="form-label">Presence Penalty (0-2):</label>
+                        <input type="number" class="form-control form-control-sm" name="presence_penalty"
+                            id="presence_penalty" value="0.8" min="0" max="2" step="0.1" form="chat-form">
+                        <small class="text-muted">Explora nuevos temas</small>
+                    </div>
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-danger m-3">{{ error }}</div>
+            {% endif %}
+
+            <!-- Área de mensajes -->
+            <!-- <div id="chat-messages" class="flex-grow-1 p-3" style="overflow-y: auto; max-height: calc(100vh - 250px);"> -->
+            <div id="chat-messages" class="p-3">
+                {% if chat %}
+                {% for c in chat %}
+                {% if c.role == "user" %}
+                <div class="mb-4 d-flex justify-content-end">
+                    <div class="bg-primary text-white p-3 rounded-start rounded-bottom"
+                        style="max-width: 70%; word-wrap: break-word;">
+                        {{ c.content | safe }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="mb-4">
+                    <div class="text-success mb-1"><strong>GPT:</strong></div>
+                    <div>
+                        {{ c.content | safe }}
+                    </div>
+                </div>
+
+                {% endif %}
+                {% endfor %}
+                {% else %}
+                <div class="text-center text-muted mt-5">
+                    <h5>¡Bienvenido!</h5>
+                    <p>Aún no hay mensajes en esta conversación. Escribe algo para comenzar.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Formulario de entrada (siempre en la parte inferior) -->
+            <div class="border-top p-3 bg-white" style="position: sticky; bottom: 0;">
+                <form id="chat-form" action="/" method="post" enctype="multipart/form-data">
+                    <div class="mb-2">
+                        <input type="file" class="form-control form-control-sm" name="file" id="file"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp">
+                        <small class="text-muted">Adjuntar archivo (PDF, Word o imagen)</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control" name="question" placeholder="Escribe tu pregunta..."
+                            required style="border-radius: 20px;">
+                            <button type="button" id="micBtn" class="btn btn-outline-secondary px-3" style="border-radius: 20px;">
+                                <i id="micIcon">🎤</i>
+                            </button>
+                        <button class="btn btn-primary px-4" type="submit" style="border-radius: 20px;">
+                            Enviar
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Modal personalizado sin Bootstrap JS -->
+<div id="newConversationModal" class="custom-modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <h6>Nueva Conversación</h6>
+            <button type="button" class="close-btn" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="conversationName" placeholder="Nombre de la conversación" maxlength="30">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="cancelBtn">Cancelar</button>
+            <button type="button" class="btn-create" id="createConversationBtn">Crear</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Estilos para el chat */
+    .chat-message-user {
+        background-color: #007bff;
+        color: white;
+        border-radius: 18px 18px 5px 18px;
+        padding: 12px 16px;
+        margin-left: 30%;
+        margin-bottom: 10px;
+        word-wrap: break-word;
+    }
+
+    .chat-message-bot {
+        background-color: #f1f1f1;
+        color: #333;
+        border-radius: 18px 18px 18px 5px;
+        padding: 12px 16px;
+        margin-right: 30%;
+        margin-bottom: 10px;
+        word-wrap: break-word;
+        border: 1px solid #e0e0e0;
+    }
+
+    /* Estilos del modal */
+    .custom-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1050;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-container {
+        position: absolute;
+        top: 30%;
+        left: 30%;
+        width: 350px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .modal-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h6 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 500;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .modal-body input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .modal-body input:focus {
+        outline: none;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+    }
+
+    .modal-body input.invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+    }
+
+    .modal-footer {
+        padding: 12px 16px;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .btn-cancel,
+    .btn-create {
+        padding: 6px 12px;
+        border: 1px solid;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-cancel {
+        background: white;
+        border-color: #6c757d;
+        color: #6c757d;
+    }
+
+    .btn-cancel:hover {
+        background: #f8f9fa;
+    }
+
+    .btn-create {
+        background: #0d6efd;
+        border-color: #0d6efd;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background: #0b5ed7;
+    }
+
+    /* Asegurar que el contenedor principal use toda la altura */
+    .container-fluid {
+        height: 100vh;
+    }
+
+    /* Estilos para scroll personalizado */
+    #chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #chat-messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    #chat-messages::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    #chat-messages::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+     #voiceBtn.recording {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+        animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .voice-status {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 14px;
+    }
+
+    .voice-status.listening {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .voice-status.error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+</style>
 {%endblock%}
