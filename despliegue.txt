@@ -1,0 +1,6 @@
+crear imagen o contenedor
+gcloud builds submit --tag gcr.io/memoria-7fd77/gpt-api
+
+despliegue a cloud run
+gcloud run deploy gpt-api  --image gcr.io/memoria-7fd77/gpt-api  --platform managed  --region us-central1  --allow-unauthenticated
+
