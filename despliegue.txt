@@ -1,3 +1,9 @@
+comentar este bloque de codigo en archivo run.py
+# comentar para desplegar
+if __name__ == '__main__':
+    # app.run(debug=True,  port=8001)
+    app.run(debug=True, host='127.0.0.1', port=8001)
+    
 crear imagen o contenedor
 gcloud builds submit --tag gcr.io/memoria-7fd77/gpt-api
 

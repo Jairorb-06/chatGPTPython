@@ -270,12 +270,32 @@
     <div class="row h-100">
         <!-- Sidebar de conversaciones -->
         <div class="col-md-3 h-100">
-             <img src="{{ url_for('static', filename='assets/logoGPT.png') }}" alt="Logo" class="img-fluid my-3" style="max-height: 60px; display: block; margin-left: auto; margin-right: auto;">
+            <div class="d-flex align-items-center justify-content-center my-3">
+                <img src="{{ url_for('static', filename='assets/logoGPT.png') }}" alt="Logo" class="img-fluid" style="max-height: 60px;">
+            </div>
+            
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="m-0">Chats</h5>
                     <button id="new-chat-btn" class="btn btn btn-sm">+ Nuevo</button>
                 </div>
+                
+                <!-- Información del usuario -->
+                <div class="border-bottom p-3 bg-light">
+                    <div class="d-flex align-items-center">
+                        {% if user.picture %}
+                        <img src="{{ user.picture }}" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
+                        {% endif %}
+                        <div>
+                            <div class="fw-bold" style="font-size: 14px;">{{ user.name }}</div>
+                            <div class="text-muted" style="font-size: 12px;">{{ user.email }}</div>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
+                    </div>
+                </div>
+                
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
                         {% for conv_id, conv in conversations.items() %}
@@ -350,7 +370,6 @@
             {% endif %}
 
             <!-- Área de mensajes -->
-            <!-- <div id="chat-messages" class="flex-grow-1 p-3" style="overflow-y: auto; max-height: calc(100vh - 250px);"> -->
             <div id="chat-messages" class="p-3">
                 {% if chat %}
                 {% for c in chat %}
@@ -373,7 +392,7 @@
                 {% endfor %}
                 {% else %}
                 <div class="text-center text-muted mt-5">
-                    <h5>¡Bienvenido!</h5>
+                    <h5>¡Bienvenido, {{ user.name }}!</h5>
                     <p>Aún no hay mensajes en esta conversación. Escribe algo para comenzar.</p>
                 </div>
                 {% endif %}
