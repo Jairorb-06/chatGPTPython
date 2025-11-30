@@ -187,10 +187,20 @@ def google_login():
     try:
         import urllib.parse
         
+        # Detectar si estamos en producción o desarrollo
+        if request.host.startswith('gpt-api-') and 'run.app' in request.host:
+            # Estamos en producción (Google Cloud Run)
+            redirect_uri = f"https://{request.host}/auth/google/callback"
+        else:
+            # Estamos en desarrollo
+            redirect_uri = url_for('main.google_callback', _external=True)
+        
+        print(f"Redirect URI generado: {redirect_uri}")  # Para debug
+        
         # Parámetros para la autorización de Google
         params = {
             'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-            'redirect_uri': url_for('main.google_callback', _external=True),
+            'redirect_uri': redirect_uri,
             'scope': 'openid email profile',
             'response_type': 'code',
             'access_type': 'offline',
@@ -224,13 +234,21 @@ def google_callback():
         
         print(f"Código recibido: {code[:20]}...")
         
+        # Detectar si estamos en producción o desarrollo
+        if request.host.startswith('gpt-api-') and 'run.app' in request.host:
+            # Estamos en producción (Google Cloud Run)
+            redirect_uri = f"https://{request.host}/auth/google/callback"
+        else:
+            # Estamos en desarrollo
+            redirect_uri = url_for('main.google_callback', _external=True)
+        
         # Intercambiar código por token de acceso
         token_data = {
             'client_id': os.getenv('GOOGLE_CLIENT_ID'),
             'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': url_for('main.google_callback', _external=True)
+            'redirect_uri': redirect_uri
         }
         
         print("=== DEBUG: Intercambiando código por token ===")
